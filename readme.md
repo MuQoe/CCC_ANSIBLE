@@ -23,3 +23,7 @@ ansible-playbook -i inventory.ini deploy_xxx.yml
 ```bash
 ansible-playbook -i inventory.ini --vault-id @prompt deploy_xxx.yml
 ```
+
+## Their is missing a private ssh file relate to the MRC which i won't private in this repo
+
+place your private key and rename with ssh_private to run the scirpt
