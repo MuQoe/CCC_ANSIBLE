@@ -1,0 +1,65 @@
+---
+- hosts: backend
+  become: yes
+  tasks:
+  - name: Install Docker
+    apt:
+      name: docker.io
+      state: present
+      update_cache: true
+  - name: Install pip3
+    apt:
+      name: python3-pip
+      state: present
+      update_cache: true
+
+  - name: Install docker python module
+    pip:
+      name: docker
+      state: present
+
+  - name: Ensure Docker service is running
+    service:
+      name: docker
+      state: started
+
+  - name: Create directory for backend
+    file:
+      path: "/ubuntu/backend"
+      state: directory
+
+  - name: Copy file to remote
+    copy:
+      src: ./ccc_proj/
+      dest: /ubuntu/backend/
+      owner: ubuntu
+      group: ubuntu
+      mode: '0755'
+
+  - name: Check if Docker container exists
+    shell: docker ps -a -q --filter="name=my_ccc_proj"
+    register: docker_container
+
+  - name: Remove existing Docker container
+    command: docker rm -f my_ccc_proj
+    when: docker_container.stdout != ""
+
+  - name: Check if Docker image exists
+    shell: docker images -q ccc_proj
+    register: docker_image
+
+  - name: Remove existing Docker image
+    command: docker rmi -f ccc_proj
+    when: docker_image.stdout != ""
+
+  - name: Build Docker image
+    command: docker build -t ccc_proj /ubuntu/backend/
+
+  - name: Run Docker container
+    docker_container:
+      name: my_ccc_proj
+      image: ccc_proj
+      state: started
+      published_ports: 5566:5566
+      volumes:
+        - /ubuntu/backend/logs:/app/logs

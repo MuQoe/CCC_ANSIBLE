@@ -1,0 +1,71 @@
+---
+    - hosts: harvester1
+      vars_files:
+        - harvester_mastodon_secret.yml
+      become: yes
+      tasks:
+      - name: Install Docker
+        apt:
+          name: docker.io
+          state: present
+          update_cache: true
+
+      - name: Install pip3
+        apt:
+          name: python3-pip
+          state: present
+          update_cache: true
+    
+      - name: Install docker python module
+        pip:
+          name: docker
+          state: present
+    
+      - name: Ensure Docker service is running
+        service:
+          name: docker
+          state: started
+    
+      - name: Create directory
+        file:
+          path: "/ubuntu/harvester"
+          state: directory
+    
+      - name: Copy file to remote
+        copy:
+          src: ./ccc_harvester/
+          dest: /ubuntu/harvester/
+          owner: ubuntu
+          group: ubuntu
+          mode: '0755'
+    
+      - name: Check if Docker container exists
+        shell: docker ps -a -q --filter="name=my_ccc_harvester"
+        register: docker_container
+    
+      - name: Remove existing Docker container
+        command: docker rm -f my_ccc_harvester
+        when: docker_container.stdout != ""
+    
+      - name: Check if Docker image exists
+        shell: docker images -q ccc_harvester
+        register: docker_image
+    
+      - name: Remove existing Docker image
+        command: docker rmi -f ccc_harvester
+        when: docker_image.stdout != ""
+    
+      - name: Build Docker image
+        command: docker build -t ccc_harvester /ubuntu/harvester/
+    
+      - name: Run Docker container
+        docker_container:
+          name: my_ccc_harvester
+          image: ccc_harvester
+          state: started
+          volumes:
+            - /ubuntu/harvester/logs:/app/logs
+          env:
+            MASTODON_API_BASE_URL: "{{ MASTODON_API_BASE_URL }}"
+            MASTODON_ACCESS_TOKEN: "{{ MASTODON_ACCESS_TOKEN }}"
+    

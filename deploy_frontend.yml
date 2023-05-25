@@ -1,0 +1,66 @@
+---
+    - hosts: backend
+      become: yes
+      tasks:
+      - name: Install Docker
+        apt:
+          name: docker.io
+          state: present
+          update_cache: true
+      - name: Install pip3
+        apt:
+          name: python3-pip
+          state: present
+          update_cache: true
+    
+      - name: Install docker python module
+        pip:
+          name: docker
+          state: present
+    
+      - name: Ensure Docker service is running
+        service:
+          name: docker
+          state: started
+    
+      - name: Create directory for frontend
+        file:
+          path: "/ubuntu/frontend"
+          state: directory
+    
+      - name: Copy file to remote
+        copy:
+          src: ./ccc_front/
+          dest: /ubuntu/frontend/
+          owner: ubuntu
+          group: ubuntu
+          mode: '0755'
+    
+      - name: Check if Docker container exists
+        shell: docker ps -a -q --filter="name=my_ccc_front"
+        register: docker_container
+    
+      - name: Remove existing Docker container
+        command: docker rm -f my_ccc_front
+        when: docker_container.stdout != ""
+    
+      - name: Check if Docker image exists
+        shell: docker images -q ccc_front
+        register: docker_image
+    
+      - name: Remove existing Docker image
+        command: docker rmi -f ccc_front
+        when: docker_image.stdout != ""
+    
+      - name: Build Docker image
+        command: docker build -t ccc_front /ubuntu/frontend/
+    
+      - name: Run Docker container
+        docker_container:
+          name: my_ccc_front
+          image: ccc_front
+          state: started
+          published_ports: 80:80
+          volumes:
+            - /ubuntu/backend/logs:/app/logs
+    

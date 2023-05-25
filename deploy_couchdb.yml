@@ -1,0 +1,44 @@
+---
+- hosts: database
+  become: yes
+  vars_files:
+    - coudb_secret.yml
+  tasks:
+  - name: Install Docker
+    apt:
+      name: docker.io
+      state: present
+      update_cache: true
+      
+  - name: Install pip3
+    apt:
+      name: python3-pip
+      state: present
+      update_cache: true
+
+  - name: Install docker python module
+    pip:
+      name: docker
+      state: present
+
+  - name: Ensure Docker service is running
+    service:
+      name: docker
+      state: started
+
+  - name: Create directory for CouchDB data
+    file:
+      path: "/ubuntu/couchdb"
+      state: directory
+
+  - name: Run couchdb container
+    docker_container:
+      name: couchdb
+      image: couchdb:latest
+      state: started
+      published_ports: 5984:5984
+      env:
+        COUCHDB_USER: "{{ couchdb_user }}"
+        COUCHDB_PASSWORD: "{{ couchdb_password }}"
+      volumes:
+        - "/ubuntu/couchdb:/opt/couchdb/data"
